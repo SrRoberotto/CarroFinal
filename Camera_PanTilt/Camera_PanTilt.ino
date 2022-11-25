@@ -50,17 +50,16 @@ const int PWMLightChannel = 3;
 
 const char* ssid_AP     = "MyWiFiCar";
 const char* password_AP = "12345678";
-const char* ssid_CLIENT     = "MyWiFiCar";
-const char* password_CLIENT = "12345678";
-// const char* ssid_CLIENT = "Sem nome";
-// const char* password_CLIENT = "x1x1x1m4VEIA";
+// const char* ssid_CLIENT     = "MyWiFiCar";
+// const char* password_CLIENT = "12345678";
+const char* ssid_CLIENT = "Sem nome";
+const char* password_CLIENT = "x1x1x1m4VEIA";
 const int   wifi_Type = WIFI_CLIENT;
 
-// Set your Static IP address
-IPAddress local_IP(10, 0, 1, 168);
-// Set your Gateway IP address
-IPAddress gateway(10, 0, 1, 1);
-IPAddress subnet(255, 255, 0, 0);
+// Set static IP
+IPAddress AP_LOCAL_IP(10, 0, 1, 168);
+IPAddress AP_GATEWAY_IP(10, 0, 1, 1);
+IPAddress AP_NETWORK_MASK(255, 255, 0, 0);
 
 AsyncWebServer server(80);
 AsyncWebSocket wsCamera("/Camera");
@@ -270,13 +269,21 @@ void setupWIFI(int type){
     }
 
     Serial.println("connected to wifi ...");
+    if (!WiFi.config(AP_LOCAL_IP, AP_GATEWAY_IP, AP_NETWORK_MASK)) {
+      Serial.println("STA Failed to configure");
+    }
     Serial.println(WiFi.localIP());
   } 
   if (type == SOFT_AP){
     WiFi.softAP(ssid_AP, password_AP);
-    IPAddress IP = WiFi.softAPIP();
-    Serial.print("AP IP address: ");
-    Serial.println(IP);
+    delay(2000);
+    if (!WiFi.softAPConfig(AP_LOCAL_IP, AP_GATEWAY_IP, AP_NETWORK_MASK)) {
+      Serial.println("AP Config Failed");
+    } else {
+      IPAddress IP = WiFi.softAPIP();
+      Serial.print("AP IP address: ");
+      Serial.println(IP);
+    }
   }
 }
 
