@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+    .arrows {
+      font-size:30px;
+      color:red;
+    }
+    td.button {
+      background-color:black;
+      border-radius:25%;
+      box-shadow: 5px 5px #888888;
+    }
+    td.button:active {
+      transform: translate(5px,5px);
+      box-shadow: none; 
+    }
+
+    .noselect {
+      -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+         -khtml-user-select: none; /* Konqueror HTML */
+           -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+                user-select: none; /* Non-prefixed version, currently
+                                      supported by Chrome and Opera */
+    }
+
+    .slidecontainer {
+      width: 100%;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 15px;
+      border-radius: 5px;
+      background: #d3d3d3;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
+
+    .slider:hover {
+      opacity: 1;
+    }
+  
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: red;
+      cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: red;
+      cursor: pointer;
+    }
+
+    </style>
+  
+  </head>
+  <body class="noselect" align="center" style="background-color:white">
+    <table id="mainTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
+      <tr>
+        <img id="cameraImage" src="" style="width:400px;height:250px"></td>
+      </tr> 
+      <tr>
+        <td style="text-align:left"><b>Light:</b></td>
+        <td colspan=2>
+          <div class="slidecontainer">
+            <input type="range" min="0" max="255" value="0" class="slider" id="Light" oninput='sendCamButtonInput("Light",value)'>
+          </div>
+        </td>   
+      </tr>
+      <tr>
+        <td style="text-align:left"><b>Pan:</b></td>
+        <td colspan=2>
+         <div class="slidecontainer">
+            <input type="range" min="0" max="180" value="90" class="slider" id="Pan" oninput='sendCamButtonInput("Pan",value)'>
+          </div>
+        </td>
+      </tr> 
+      <tr>
+        <td style="text-align:left"><b>Tilt:</b></td>
+        <td colspan=2>
+          <div class="slidecontainer">
+            <input type="range" min="0" max="180" value="90" class="slider" id="Tilt" oninput='sendCamButtonInput("Tilt",value)'>
+          </div>
+        </td>   
+      </tr>      
+    </table>
+  
+    <script>
+      var webSocketCameraUrl = "ws:\/\/10.0.1.168/Camera";
+      var webSocketCamInputUrl = "ws:\/\/10.0.1.168/CamInput";      
+      var websocketCamera;
+      var websocketCamInput;      
+      
+      function initCameraWebSocket() 
+      {
+        websocketCamera = new WebSocket(webSocketCameraUrl);
+        websocketCamera.binaryType = 'blob';
+        websocketCamera.onopen    = function(event){};
+        websocketCamera.onclose   = function(event){setTimeout(initCameraWebSocket, 2000);};
+        websocketCamera.onmessage = function(event)
+        {
+          var imageId = document.getElementById("cameraImage");
+          imageId.src = URL.createObjectURL(event.data);
+        };
+      }
+      
+      function initCamInputWebSocket() 
+      {
+        websocketCamInput = new WebSocket(webSocketCamInputUrl);
+        websocketCamInput.onopen    = function(event)
+        {
+          sendCamButtonInput("Light", document.getElementById("Light").value);
+          sendCamButtonInput("Pan", document.getElementById("Pan").value);
+          sendCamButtonInput("Tilt", document.getElementById("Tilt").value);                    
+        };
+        websocketCamInput.onclose   = function(event){setTimeout(initCamInputWebSocket, 2000);};
+        websocketCamInput.onmessage = function(event){};        
+      }
+
+      function initWebSocket() 
+      {
+        initCameraWebSocket ();
+        initCamInputWebSocket();
+      }
+
+      function sendCamButtonInput(key, value) 
+      {
+        var data = key + "," + value;
+        websocketCamInput.send(data);
+      }
+    
+      window.onload = initWebSocket;
+      document.getElementById("mainTable").addEventListener("touchend", function(event){
+        event.preventDefault()
+      });      
+    </script>
+  </body>    
+</html>
