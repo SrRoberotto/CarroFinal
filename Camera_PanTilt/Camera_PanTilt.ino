@@ -50,9 +50,17 @@ const int PWMLightChannel = 3;
 
 const char* ssid_AP     = "MyWiFiCar";
 const char* password_AP = "12345678";
-const char* ssid_CLIENT = "Sem nome";
-const char* password_CLIENT = "x1x1x1m4VEIA";
+const char* ssid_CLIENT     = "MyWiFiCar";
+const char* password_CLIENT = "12345678";
+// const char* ssid_CLIENT = "Sem nome";
+// const char* password_CLIENT = "x1x1x1m4VEIA";
 const int   wifi_Type = WIFI_CLIENT;
+
+// Set your Static IP address
+IPAddress local_IP(10, 0, 1, 168);
+// Set your Gateway IP address
+IPAddress gateway(10, 0, 1, 1);
+IPAddress subnet(255, 255, 0, 0);
 
 AsyncWebServer server(80);
 AsyncWebSocket wsCamera("/Camera");
