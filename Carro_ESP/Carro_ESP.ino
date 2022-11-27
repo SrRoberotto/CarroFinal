@@ -61,18 +61,21 @@ const int PWMFreq = 1000; /* 1 KHz */
 const int PWMResolution = 8;
 const int PWMSpeedChannel = 4;
 
-const int ledPin = 2;
+const int ledPin = 1;
 
-const char* ssid_AP     = "MyWiFiCar";
+const char* ssid_AP     = "SpyCarWifi";
 const char* password_AP = "12345678";
 const char* ssid_CLIENT = "Sem nome";
 const char* password_CLIENT = "x1x1x1m4VEIA";
-const int   wifi_Type = WIFI_CLIENT;//SOFT_AP;
+// const int   wifi_Type = SOFT_AP;
+const int   wifi_Type = WIFI_CLIENT; 
 
 // Set static IP
 IPAddress AP_LOCAL_IP(10, 0, 1, 125);
 IPAddress AP_GATEWAY_IP(10, 0, 1, 1);
 IPAddress AP_NETWORK_MASK(255, 255, 0, 0);
+
+int wifiClientsCount = 0;
 
   
 AsyncWebServer server(80);  
@@ -193,21 +196,22 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
       </tr>
       <tr>
         <td></td>
-        <td class="button" onmousedown='sendCarButtonInput("MoveCar","1")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td>
-        <!-- td class="button" ontouchstart='sendCarButtonInput("MoveCar","1")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td -->
+        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","1")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td -->
+        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","1")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td>
         <td></td>
       </tr>
       <tr>
-        <td class="button" onmousedown='sendCarButtonInput("MoveCar","3")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td>
-        <!-- td class="button" ontouchstart='sendCarButtonInput("MoveCar","3")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td -->
-        <td class="button"></td>    
-        <td class="button" onmousedown='sendCarButtonInput("MoveCar","4")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td>
-        <!-- td class="button" ontouchstart='sendCarButtonInput("MoveCar","4")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td -->
+        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","3")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td -->
+        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","3")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td>
+        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","0")' onmouseup='sendCarButtonInput("MoveCar","0")></td -->  
+        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","0")' ontouchend='sendCarButtonInput("MoveCar","0")></td>
+        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","4")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td -->
+        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","4")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td>
       </tr>
       <tr>
         <td></td>
-        <td class="button" onmousedown='sendCarButtonInput("MoveCar","2")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td>
-        <!-- td class="button" ontouchstart='sendCarButtonInput("MoveCar","2")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td -->
+        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","2")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td -->
+        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","2")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td>
         <td></td>
       </tr>
       <tr/><tr/>
@@ -472,11 +476,23 @@ void setup(void)
   Serial.println(WS_MAX_QUEUED_MESSAGES);
   Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
 
+  digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
+  delay(100);   
+  digitalWrite(ledPin, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(2000);                       // wait for a second
+  digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
+  delay(100);    
+
 }
 
 
 void loop() 
 {
   wsCarInput.cleanupClients();
+  if (WiFi.softAPgetStationNum()!=wifiClientsCount){
+    wifiClientsCount = WiFi.softAPgetStationNum();
+    Serial.print("Stations connected now: ");
+    Serial.println(wifiClientsCount);
+  }
 }
 

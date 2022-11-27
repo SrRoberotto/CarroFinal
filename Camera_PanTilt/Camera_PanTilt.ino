@@ -25,6 +25,8 @@ Servo tiltServo;
 #define RIGHT 4
 #define STOP 0
 
+int contagem = 0;
+
 const int PWMFreq = 1000; /* 1 KHz */
 const int PWMResolution = 8;
 //const int PWMSpeedChannel = 2;
@@ -48,12 +50,12 @@ const int PWMLightChannel = 3;
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-const char* ssid_AP     = "MyWiFiCar";
+const char* ssid_AP     = "SpyCarWifi";
 const char* password_AP = "12345678";
-// const char* ssid_CLIENT     = "MyWiFiCar";
-// const char* password_CLIENT = "12345678";
-const char* ssid_CLIENT = "Sem nome";
-const char* password_CLIENT = "x1x1x1m4VEIA";
+const char* ssid_CLIENT     = "SpyCarWifi";
+const char* password_CLIENT = "12345678";
+// const char* ssid_CLIENT = "Sem nome";
+// const char* password_CLIENT = "x1x1x1m4VEIA";
 const int   wifi_Type = WIFI_CLIENT;
 
 // Set static IP
@@ -262,10 +264,15 @@ void setupWIFI(int type){
     // Connect to Wi-Fi
   if (type == WIFI_CLIENT){
     WiFi.begin(ssid_CLIENT, password_CLIENT);
-    while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED && contagem <= 8) {
+      contagem++;
       delay(1000);
-      Serial.println("Connecting to WiFi... ");
+      Serial.print(contagem);
+      Serial.print(" - Connecting to WiFi... ");
       Serial.println(ssid_CLIENT);
+      if (contagem > 15){
+        Serial.println("Tentativas em excesso...");     
+      }
     }
 
     Serial.println("connected to wifi ...");
