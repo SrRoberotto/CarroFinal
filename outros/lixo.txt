@@ -1,0 +1,34 @@
+
+//Define a "classe" sensores
+// struct SENSOR_PINS
+// {
+//   int pinTrg;  
+//   int pinEcho;
+//   int distanceCm;    
+// };
+
+//Vetor com os sensores e a pinagem configurada
+// std::vector<SENSOR_PINS> sensorPins = 
+// {
+//   {26, 27, 0}, //Trig, Echo, distancia
+//   //{21, 18, 0},
+// };
+
+
+
+  // digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
+  // delay(100);   
+  // digitalWrite(ledPin, HIGH);   // turn the LED on (HIGH is the voltage level)
+  // delay(2000);                       // wait for a second
+  // digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
+  // delay(100);    
+
+
+
+
+          <!--p>
+          < i class="fa fa-road" style="color:#00add6;"></i> 
+            <span class="dht-labels">Distance B</span> 
+            <span id="DistanceB">%DISTANCEB%</span>
+            <sup class="units">Cm</sup>
+          </p -->

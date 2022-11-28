@@ -6,6 +6,8 @@
 #include <ESPAsyncWebServer.h>
 #include <iostream>
 #include <sstream>
+#include "HC_SR04.h"
+
 
 //Define a "classe" motor
 struct MOTOR_PINS
@@ -15,15 +17,6 @@ struct MOTOR_PINS
   int pinCMD2;    
 };
 
-//Define a "classe" sensores
-// struct SENSOR_PINS
-// {
-//   int pinTrg;  
-//   int pinEcho;
-//   float distanceCm;    
-// };
-
-
 //Vetor com os motores e a pinagem configurada
 std::vector<MOTOR_PINS> motorPins = 
 {
@@ -31,14 +24,24 @@ std::vector<MOTOR_PINS> motorPins =
   {21, 18, 19}, //LEFT_MOTOR  Pins (EnB, CMD3, CMD4)
 };
 
-//Vetor com os motores e a pinagem configurada
-// std::vector<SENSOR_PINS> sensorPins = 
-// {
-//   {21, 16, 0}, //RIGHT_MOTOR Pins (EnA, CMD1, CMD2)
-//   {21, 18, 0}, //LEFT_MOTOR  Pins (EnB, CMD3, CMD4)
-// };
+
+//Define a "classe" sensores
+struct SENSOR_PINS
+{
+  int pinTrg;  
+  int pinEcho;
+  int distanceCm;    
+};
+
+//Vetor com os sensores e a pinagem configurada
+std::vector<SENSOR_PINS> sensores = 
+{
+  {26, 27, 0}, //Trig, Echo, distancia
+  //{21, 18, 0},
+};
 
 
+// ENUMS
 #define UP 1
 #define DOWN 2
 #define LEFT 3
@@ -54,21 +57,27 @@ std::vector<MOTOR_PINS> motorPins =
 #define SOFT_AP 1
 #define WIFI_CLIENT 2
 
+// CONFIGURAÇÕES DO SENSOR DE DISTÂNCIA
 // #define SOUND_SPEED 0.034
 // #define TEMPERATURE_CORRECTION 28
+// #define TRIG_PIN_A 26
+// #define ECHO_PIN_A 27
+// #define ECHO_INT_A 27 //interruption
+#define MAX_DIST 200
+#define MAX_TIME 15000
+#define DISTANCIA_SEGURA 30 //em cm
 
-const int PWMFreq = 1000; /* 1 KHz */
-const int PWMResolution = 8;
-const int PWMSpeedChannel = 4;
+// INICIALIZA SENSOR DE DISTANCIA
+HC_SR04 sensor0(sensores[0].pinTrg, sensores[0].pinEcho, sensores[0].pinEcho, MAX_DIST);
 
-const int ledPin = 1;
 
+// CONFIGURAÇÕES DO WIFI
 const char* ssid_AP     = "SpyCarWifi";
 const char* password_AP = "12345678";
 const char* ssid_CLIENT = "Sem nome";
 const char* password_CLIENT = "x1x1x1m4VEIA";
-// const int   wifi_Type = SOFT_AP;
-const int   wifi_Type = WIFI_CLIENT; 
+const int   wifi_Type = SOFT_AP;
+// const int   wifi_Type = WIFI_CLIENT; 
 
 // Set static IP
 IPAddress AP_LOCAL_IP(10, 0, 1, 125);
@@ -77,93 +86,118 @@ IPAddress AP_NETWORK_MASK(255, 255, 0, 0);
 
 int wifiClientsCount = 0;
 
-  
 AsyncWebServer server(80);  
 AsyncWebSocket wsCarInput("/CarInput");
+
+//OUTRAS CONFIGURAÇÕES
+const int PWMFreq = 1000; /* 1 KHz */
+const int PWMResolution = 8;
+const int PWMSpeedChannel = 4;
+char buffer[40];
+
+// CONFIGURAÇÃO DO LED INTERNO
+const int ledPin = 1;
 
 const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 <!DOCTYPE html>
 <html>
   <head>
     <script>
-      var webSocketCarInputUrl = "ws:\/\/10.0.1.125/CarInput";
-      var webSocketCameraUrl   = "ws:\/\/10.0.1.168/Camera";
-      var webSocketCamInputUrl = "ws:\/\/10.0.1.168/CamInput";     
+      var webSocketCarInputUrl  = "ws:\/\/10.0.1.125\/CarInput";
+      var webSocketCameraUrl    = "ws:\/\/10.0.1.168\/Camera";
+      var webSocketCamInputUrl  = "ws:\/\/10.0.1.168\/CamInput";
+      var sensorReadings        = "http:\/\/10.0.1.125\/distanceCm"
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
-    .arrows {
-      font-size:30px;
-      color:red;
-    }
-    td.button {
-      background-color:black;
-      border-radius:25%;
-      box-shadow: 5px 5px #888888;
-    }
-    td.button:active {
-      transform: translate(5px,5px);
-      box-shadow: none; 
-    }
+      .arrows {
+        font-size:30px;
+        color:red;
+      }
+      td.button {
+        background-color:black;
+        border-radius:25%;
+        box-shadow: 5px 5px #888888;
+      }
+      td.button:active {
+        transform: translate(5px,5px);
+        box-shadow: none; 
+      }
 
-    .noselect {
-      -webkit-touch-callout: none; /* iOS Safari */
-        -webkit-user-select: none; /* Safari */
-         -khtml-user-select: none; /* Konqueror HTML */
-           -moz-user-select: none; /* Firefox */
-            -ms-user-select: none; /* Internet Explorer/Edge */
-                user-select: none; /* Non-prefixed version, currently
-                                      supported by Chrome and Opera */
-    }
+      .noselect {
+        -webkit-touch-callout: none; /* iOS Safari */
+          -webkit-user-select: none; /* Safari */
+          -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Firefox */
+              -ms-user-select: none; /* Internet Explorer/Edge */
+                  user-select: none; /* Non-prefixed version, currently
+                                        supported by Chrome and Opera */
+      }
 
-    .slidecontainer {
-      width: 100%;
-    }
+      .slidecontainer {
+        width: 100%;
+      }
 
-    .slider {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 15px;
-      border-radius: 5px;
-      background: #d3d3d3;
-      outline: none;
-      opacity: 0.7;
-      -webkit-transition: .2s;
-      transition: opacity .2s;
-    }
+      .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 15px;
+        border-radius: 5px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+      }
 
-    .slider:hover {
-      opacity: 1;
-    }
-  
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      background: red;
-      cursor: pointer;
-    }
+      .slider:hover {
+        opacity: 1;
+      }
+    
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: red;
+        cursor: pointer;
+      }
 
-    .slider::-moz-range-thumb {
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      background: red;
-      cursor: pointer;
-    }
+      .slider::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: red;
+        cursor: pointer;
+      }
 
+      .units {
+          font-size: 2rem;
+          vertical-align:bottom;
+      }
+      .dht-labels{
+          font-size: 2rem;
+          vertical-align:middle;
+          
+      }
+      .dht-values{
+          font-size: 2rem;
+          vertical-align:middle;
+          font-weight: bold;
+      }
     </style>
   </head>
 
   <body class="noselect" align="center" style="background-color:white">
     <table id="mainTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
       <tr>
-        <img id="cameraImage" src="" style="width:400px;height:250px"></td>
+        <td colspan="3">
+          <img id="cameraImage" src="" style="width:400px;height:250px"></td>
+        </td>
       </tr> 
       <tr>
-        <td style="text-align:left"><b>Light:</b></td>
+        <td style="text-align:left"><b>Farol:</b></td>
         <td colspan=2>
           <div class="slidecontainer">
             <input type="range" min="0" max="255" value="0" class="slider" id="Light" oninput='sendCamButtonInput("Light",value)'>
@@ -171,7 +205,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         </td>   
       </tr>
       <tr>
-        <td style="text-align:left"><b>Pan:</b></td>
+        <td style="text-align:left"><b>Movimento horizontal:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
             <input type="range" min="0" max="180" value="90" class="slider" id="Pan" oninput='sendCamButtonInput("Pan",value)'>
@@ -179,7 +213,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         </td>
       </tr> 
       <tr>
-        <td style="text-align:left"><b>Tilt:</b></td>
+        <td style="text-align:left"><b>Movimento vertical:</b></td>
         <td colspan=2>
           <div class="slidecontainer">
             <input type="range" min="0" max="180" value="90" class="slider" id="Tilt" oninput='sendCamButtonInput("Tilt",value)'>
@@ -187,7 +221,7 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         </td>   
       </tr>
       <tr>
-        <td style="text-align:left"><b>Speed:</b></td>
+        <td style="text-align:left"><b>Velocidade:</b></td>
         <td colspan=2>
          <div class="slidecontainer">
             <input type="range" min="0" max="255" value="150" class="slider" id="Speed" oninput='sendCarButtonInput("Speed",value)'>
@@ -195,25 +229,48 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         </td>
       </tr>
       <tr>
+        <td colspan="3">
+          <i class="fa fa-road" style="color:#00add6;"></i> 
+          <span class="dht-labels">Distancia frontal: </span> 
+          <span id="DistanceA" class="dht-values">%D1%</span>
+          <span class="units">Cm</span>
+        </td>
+      </tr>
+      <!----- Versao desktop -----
+      <tr>
         <td></td>
-        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","1")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td -->
+        <td class="button" onmousedown='sendCarButtonInput("MoveCar","1")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td class="button" onmousedown='sendCarButtonInput("MoveCar","3")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td>
+        <td class="button" onmousedown='sendCarButtonInput("MoveCar","0")' onmouseup='sendCarButtonInput("MoveCar","0")'></td>    
+        <td class="button" onmousedown='sendCarButtonInput("MoveCar","4")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td class="button" onmousedown='sendCarButtonInput("MoveCar","2")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td>
+        <td></td>
+      </tr>
+      ---- Fim da versao desktop ---->
+
+      <!-- Versao mobile ---->
+      <tr>
+        <td></td>
         <td class="button" ontouchstart='sendCarButtonInput("MoveCar","1")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8679;</span></td>
         <td></td>
       </tr>
       <tr>
-        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","3")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td -->
         <td class="button" ontouchstart='sendCarButtonInput("MoveCar","3")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8678;</span></td>
-        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","0")' onmouseup='sendCarButtonInput("MoveCar","0")></td -->  
-        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","0")' ontouchend='sendCarButtonInput("MoveCar","0")></td>
-        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","4")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td -->
+        <td class="button" ontouchstart='sendCarButtonInput("MoveCar","0")' ontouchend='sendCarButtonInput("MoveCar","0")'></td>
         <td class="button" ontouchstart='sendCarButtonInput("MoveCar","4")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8680;</span></td>
       </tr>
       <tr>
         <td></td>
-        <!-- td class="button" onmousedown='sendCarButtonInput("MoveCar","2")' onmouseup='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td -->
         <td class="button" ontouchstart='sendCarButtonInput("MoveCar","2")' ontouchend='sendCarButtonInput("MoveCar","0")'><span class="arrows" >&#8681;</span></td>
         <td></td>
       </tr>
+      <!---- Fim da versao mobile ---->
       <tr/><tr/>
     </table>
   
@@ -280,29 +337,67 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
         console.log(data);
       }
 
+      // Versao mobile
       window.onload = initWebSocket;
       document.getElementById("mainTable").addEventListener("touchend", function(event){
         event.preventDefault()
       });      
 
+      // Versao desktop
       // window.onload = initWebSocket;
       // document.getElementById("mainTable").addEventListener("mouseup", function(event){
       //   event.preventDefault()
       // });
+
+      setInterval(function ( ) {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+              const values = this.responseText.split("|");
+              document.getElementById("DistanceA").innerHTML = values[0];
+              //document.getElementById("DistanceB").innerHTML = values[1];
+            }
+          };
+          xhttp.open("GET", sensorReadings, true);
+          xhttp.send();
+        }, 1000 );
     </script>
   </body>    
 </html>
 )HTMLHOMEPAGE";
 
-
-String sendDistance(){
-  return "25|";
+// Verifica a distancia atual nos sensores
+void checkDistance(){
+  if(sensor0.isFinished()){
+    sensores[0].distanceCm = sensor0.getRange();
+    sensor0.start();    
+  }
 }
 
+// Verifica se o carrinho pode ir na direcao informada
+bool motorCanRun(int motorDirection, std::vector<SENSOR_PINS> s){
+  if (motorDirection == FORWARD && s[0].distanceCm < DISTANCIA_SEGURA){
+    Serial.println("Motor nao pode rodar nesse sentido");
+    return false;
+  } else {
+    return true;
+  }
+}
 
+// Envia a resposta HTTP das distâncias medidas
+String sendDistance(std::vector<SENSOR_PINS> s){
+  if (s[0].distanceCm > DISTANCIA_SEGURA){  
+    sprintf(buffer, "%d|", s[0].distanceCm);
+  } else{
+    sprintf(buffer, ">%d<|", s[0].distanceCm);
+  }
+  return buffer;
+}
 
+// Comandos físico dos motores
 void rotateMotor(int motorNumber, int motorDirection)
 {
+  
   if (motorDirection == FORWARD)
   {
     digitalWrite(motorPins[motorNumber].pinCMD1, HIGH);
@@ -320,6 +415,7 @@ void rotateMotor(int motorNumber, int motorDirection)
   }
 }
 
+// Comandos lógicos dos motores e direções
 void moveCar(int inputValue)
 {
   Serial.printf("Got value as %d\n", inputValue);  
@@ -327,8 +423,10 @@ void moveCar(int inputValue)
   {
 
     case UP:
-      rotateMotor(RIGHT_MOTOR, FORWARD);
-      rotateMotor(LEFT_MOTOR, FORWARD);                  
+      if (motorCanRun(FORWARD, sensores)){
+        rotateMotor(RIGHT_MOTOR, FORWARD);
+        rotateMotor(LEFT_MOTOR, FORWARD);     
+      }             
       break;
   
     case DOWN:
@@ -358,16 +456,19 @@ void moveCar(int inputValue)
   }
 }
 
+// Página HTML inicial
 void handleRoot(AsyncWebServerRequest *request) 
 {
   request->send_P(200, "text/html", htmlHomePage);
 }
 
+// Erro 404
 void handleNotFound(AsyncWebServerRequest *request) 
 {
     request->send(404, "text/plain", "File Not Found");
 }
 
+// Comandos via SOCKET
 void onCarInputWebSocketEvent(AsyncWebSocket *server, 
                       AsyncWebSocketClient *client, 
                       AwsEventType type,
@@ -420,7 +521,7 @@ void setUpMotorPinModes()
 {
   //Set up PWM
   ledcSetup(PWMSpeedChannel, PWMFreq, PWMResolution);
-  pinMode(ledPin, OUTPUT);
+  //pinMode(ledPin, OUTPUT);
       
   for (int i = 0; i < motorPins.size(); i++)
   {
@@ -464,51 +565,50 @@ void setupWIFI(int type){
   }
 }
 
-void setup(void) 
-{
-  setUpMotorPinModes();
-  Serial.begin(115200);
-
-  setupWIFI(wifi_Type);
-
+void setupServer(){
+  // INICIALIZA SERVER HTTP
   server.on("/", HTTP_GET, handleRoot);
   server.onNotFound(handleNotFound);
-  
   wsCarInput.onEvent(onCarInputWebSocketEvent);
 
-  // Access-Control-Allow-Origin: *
   server.addHandler(&wsCarInput);
 
   server.on("/distanceCm", HTTP_GET, [](AsyncWebServerRequest* request) {
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", sendDistance().c_str());
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", sendDistance(sensores).c_str());
     response->addHeader("Access-Control-Allow-Origin","*");
     request->send(response);
-    // request->addInterestingHeader(const String &name)
     // request->send_P(200, "text/plain", sendDistance().c_str());
   });
 
   server.begin();
+
   Serial.print("HTTP server started with max queued: ");
   Serial.println(WS_MAX_QUEUED_MESSAGES);
-  Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
-
-  digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
-  delay(100);   
-  digitalWrite(ledPin, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(2000);                       // wait for a second
-  digitalWrite(ledPin, LOW);    // turn the LED off by making the voltage LOW
-  delay(100);    
-
 }
 
+// Programa principal - SETUP
+void setup(void) 
+{
+  Serial.begin(115200);
+  sensor0.begin();
+  setUpMotorPinModes();
+  setupWIFI(wifi_Type);
+  setupServer();
 
+  Serial.printf("SPIRam Total heap %d, SPIRam Free Heap %d\n", ESP.getPsramSize(), ESP.getFreePsram());
+}
+
+// Programa principal - LOOP
 void loop() 
 {
   wsCarInput.cleanupClients();
+  checkDistance();
   if (WiFi.softAPgetStationNum()!=wifiClientsCount){
     wifiClientsCount = WiFi.softAPgetStationNum();
     Serial.print("Stations connected now: ");
     Serial.println(wifiClientsCount);
   }
+
+
 }
 
