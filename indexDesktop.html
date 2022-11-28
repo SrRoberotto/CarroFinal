@@ -2,9 +2,10 @@
 <html>
   <head>
     <script>
-      var webSocketCarInputUrl = "ws:\/\/10.0.1.125/CarInput";
-      var webSocketCameraUrl   = "ws:\/\/10.0.1.168/Camera";
-      var webSocketCamInputUrl = "ws:\/\/10.0.1.168/CamInput";     
+      var webSocketCarInputUrl  = "ws:\/\/10.0.1.125/CarInput";
+      var webSocketCameraUrl    = "ws:\/\/10.0.1.168/Camera";
+      var webSocketCamInputUrl  = "ws:\/\/10.0.1.168/CamInput";
+      var sensorReadings        = "http://10.0.1.125/distanceCm"
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
@@ -69,12 +70,32 @@
       background: red;
       cursor: pointer;
     }
-
+    p { font-size: 3.0rem; }
+      .units { font-size: 1.2rem; }
+      .dht-labels{
+        font-size: 1.5rem;
+        vertical-align:middle;
+        padding-bottom: 15px;
+    }
     </style>
   </head>
 
   <body class="noselect" align="center" style="background-color:white">
     <table id="mainTable" style="width:400px;margin:auto;table-layout:fixed" CELLSPACING=10>
+      <tr>
+        <p>
+          <i class="fa fa-road" style="color:#00add6;"></i> 
+            <span class="dht-labels">Distância: </span> 
+            <span id="DistanceA">%D1%</span>
+            <sup class="units">Cm</sup>
+          </p>
+          <p>
+          <!-- i class="fa fa-road" style="color:#00add6;"></i> 
+            <span class="dht-labels">Distance B</span> 
+            <span id="DistanceB">%DISTANCEB%</span>
+            <sup class="units">Cm</sup>
+          </p -->
+      </tr>
       <tr>
         <img id="cameraImage" src="" style="width:400px;height:250px"></td>
       </tr> 
@@ -203,6 +224,19 @@
       document.getElementById("mainTable").addEventListener("mouseup", function(event){
         event.preventDefault()
       });
+
+      setInterval(function ( ) {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+              const values = this.responseText.split("|");
+              document.getElementById("DistanceA").innerHTML = values[0];
+              //document.getElementById("DistanceB").innerHTML = values[1];
+            }
+          };
+          xhttp.open("GET", sensorReadings, true);
+          xhttp.send();
+        }, 1000 );
     </script>
   </body>    
 </html>

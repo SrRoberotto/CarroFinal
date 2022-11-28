@@ -295,6 +295,12 @@ const char* htmlHomePage PROGMEM = R"HTMLHOMEPAGE(
 )HTMLHOMEPAGE";
 
 
+String sendDistance(){
+  return "25|";
+}
+
+
+
 void rotateMotor(int motorNumber, int motorDirection)
 {
   if (motorDirection == FORWARD)
@@ -469,7 +475,17 @@ void setup(void)
   server.onNotFound(handleNotFound);
   
   wsCarInput.onEvent(onCarInputWebSocketEvent);
+
+  // Access-Control-Allow-Origin: *
   server.addHandler(&wsCarInput);
+
+  server.on("/distanceCm", HTTP_GET, [](AsyncWebServerRequest* request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", sendDistance().c_str());
+    response->addHeader("Access-Control-Allow-Origin","*");
+    request->send(response);
+    // request->addInterestingHeader(const String &name)
+    // request->send_P(200, "text/plain", sendDistance().c_str());
+  });
 
   server.begin();
   Serial.print("HTTP server started with max queued: ");
